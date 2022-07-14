@@ -1,3 +1,4 @@
+#importing libraries
 library(rvest)
 library(dplyr)
 library(stringr)
@@ -7,9 +8,11 @@ library(tidytext)
 library(tidyr)
 library(ggplot2)
 
+#creating empty data farmes
 pre_movies <- data.frame()
 post_movies <- data.frame()
 
+#Scrapping IMDB data for pre-pandemic movies (2018-2019) released in USA
 for(page_result1 in seq(from = 1, to = 7351, by = 50)){
   pre_page <- "https://www.imdb.com/search/title/?title_type=feature&release_date=2018-01-01,2019-12-31&countries=us&sort=alpha,asc&start="
   pre <- read_html(paste0(pre_page, page_result1, "&ref_=adv_nxt"))
@@ -27,6 +30,7 @@ for(page_result1 in seq(from = 1, to = 7351, by = 50)){
   pre_movies <- rbind(pre_movies, data.frame(pre_titles, pre_year, pre_genre, pre_runtime, pre_rating, pre_synopsis, pre_cast, pre_votes, pre_gross))
 }
 
+#Scrapping IMDB data for post-pandemic movies (2020-2021) released in USA
 for(page_result2 in seq(from = 1, to = 7851, by = 50)){
   post_page <- "https://www.imdb.com/search/title/?title_type=feature&release_date=2020-01-01,2021-12-31&countries=us&sort=alpha,asc&start="
   post <- read_html(paste0(post_page, page_result2, "&ref_=adv_nxt"))
@@ -43,9 +47,11 @@ for(page_result2 in seq(from = 1, to = 7851, by = 50)){
   post_movies <- rbind(post_movies, data.frame(post_titles, post_year, post_genre, post_runtime, post_rating, post_synopsis, post_cast, post_votes, post_gross))
 }
 
+#Renaming the column names
 colnames(pre_movies) <- c("title", "year", "genre", "runtime", "rating",  "summary", "cast", "votes", "gross")
 colnames(post_movies) <- c("title", "year", "genre", "runtime", "rating",  "summary", "cast", "votes", "gross")
 
+#Cleaning the pre-pandemic data by removing extra characters and white spaces to make it uniform for statistical analysis
 pre_movies$year <- as.character(gsub("(", "", pre_movies$year, fixed=TRUE))
 pre_movies$year <- as.character(gsub(")", "", pre_movies$year, fixed=TRUE))
 pre_movies$year <- as.numeric(pre_movies$year)
@@ -70,6 +76,7 @@ pre_movies$actor <- as.character(gsub(" \n    Star:\n", "", pre_movies$actor, fi
 pre_movies$actor <- as.character(gsub(" \n    Stars:\n", "", pre_movies$actor, fixed = TRUE))
 pre_movies$actor <- as.character(gsub("\n", "", pre_movies$actor, fixed = TRUE))
 
+#Cleaning the post-pandemic data by removing extra characters and white spaces to make it uniform for statistical analysis
 post_movies$year <- as.character(gsub("(", "", post_movies$year, fixed=TRUE))
 post_movies$year <- as.character(gsub(")", "", post_movies$year, fixed=TRUE))
 post_movies$year <- as.numeric(post_movies$year)
@@ -158,30 +165,25 @@ for(i in 1:nrow(post_movies))
   }
 }
 
+#removing some more extra white spaces
 pre_movies$actor <- as.character(gsub("   ", "", pre_movies$actor, fixed = TRUE))
 post_movies$actor <- as.character(gsub("   ", "", post_movies$actor, fixed = TRUE))
 pre_movies$director <- as.character(gsub("   ", "", pre_movies$director, fixed = TRUE))
 post_movies$director <- as.character(gsub("   ", "", post_movies$director, fixed = TRUE))
 
+#writing the dataframe to an excel format and reading it
 writexl::write_xlsx(pre_movies, "C:/Users/Siddharth Varada/OneDrive - Hult Students/Project/final//pre_pandemic.xlsx")
 writexl::write_xlsx(post_movies, "C:/Users/Siddharth Varada/OneDrive - Hult Students/Project/final//post_pandemic.xlsx")
 prepan_movies <- read_excel("C:/Users/Siddharth Varada/OneDrive - Hult Students/Project/final//pre_pandemic.xlsx")
 postpan_movies <- read_excel("C:/Users/Siddharth Varada/OneDrive - Hult Students/Project/final///post_pandemic.xlsx")
 
-#pre_summary_blob <- paste(prepan_movies[,6], sep=" ", collapse = " ")
-#post_summary_blob <- paste(postpan_movies[,6], sep=" ", collapse = " ")
-#pre_director_blob <- paste(prepan_movies[,10], sep=" ", collapse = " ")
-#post_director_blob <- paste(postpan_movies[,10], sep=" ", collapse = " ")
-#pre_actor_blob <- paste(prepan_movies[,11], sep=" ", collapse = " ")
-#post_actor_blob <- paste(postpan_movies[,11], sep=" ", collapse = " ")
-
+#combining the movies into a single data frame
 all_movies <- rbind(prepan_movies, postpan_movies)
-#analysis_blob <- data.frame(pre_summary_blob, post_summary_blob, pre_director_blob, post_director_blob, pre_actor_blob, post_actor_blob)
 head(all_movies)
 #############################################
 ###### N-grams and tokenizing ###############
 #############################################
-
+#Unnesting tokens from pre-pandemic movies for bigram analysis
 prepan_bigrams <- prepan_movies %>%
   #filter(genre == "Comedy, Romance") %>%
   unnest_tokens(bigram, summary, token = "ngrams", n=2)
@@ -234,6 +236,7 @@ ggraph(prepan_graph, layout = "fr") +
   geom_node_point()+
   geom_node_text(aes(label=name), vjust =1, hjust=1)
 
+#Unnesting tokens from post-pandemic movies for bigram analysis
 postpan_bigrams <- postpan_movies %>%
   #filter(genre == "Comedy, Romance") %>%
   unnest_tokens(bigram, summary, token = "ngrams", n=2)
@@ -294,6 +297,7 @@ cor.test(postpan_movies$rating, postpan_movies$runtime, use = "complete.obs", me
 movies_runtime <- data.frame()
 movies_runtime <- all_movies[complete.cases(all_movies$runtime),]
 
+#Unnesting tokens from short runtime movies for bigram analysis
 short_bigrams <- movies_runtime %>%
   filter(runtime <= 90) %>%
   unnest_tokens(bigram, summary, token = "ngrams", n=2)
@@ -349,9 +353,8 @@ ggraph(short_graph, layout = "fr") +
   geom_node_point()+
   geom_node_text(aes(label=name), vjust =1, hjust=1)
 
-###########################################################
-###########################################################
-###########################################################
+
+#Unnesting tokens from short runtime movies for bigram analysis
 long_bigrams <- movies_runtime %>%
   filter(runtime > 90) %>%
   unnest_tokens(bigram, summary, token = "ngrams", n=2)
@@ -414,6 +417,7 @@ movies_rating <- all_movies[complete.cases(all_movies$rating),]
 #high_movies <- movies_rating[which(movies_rating$rating > 8),] 
 #low_movies <- movies_rating[which(movies_rating$rating < 3),] 
 
+#Unnesting tokens from low-rated movies for bigram analysis
 low_bigrams <- movies_rating %>%
   filter(rating < 3) %>%
   unnest_tokens(bigram, summary, token = "ngrams", n=2)
@@ -469,6 +473,7 @@ ggraph(low_graph, layout = "fr") +
   geom_node_point()+
   geom_node_text(aes(label=name), vjust =1, hjust=1)
 
+#Unnesting tokens from high-rated movies for bigram analysis
 high_bigrams <- movies_rating %>%
   filter(rating > 8) %>%
   unnest_tokens(bigram, summary, token = "ngrams", n=2)
@@ -537,8 +542,6 @@ ggraph(high_graph, layout = "fr") +
 options(max.print = nrow(postpan_movies))
 my_linear1 <- lm(formula=rating~genre, data=prepan_movies)
 summary(my_linear1)
-#ggplot(data = prepan_movies, aes(x=rating,y=genre))+geom_point()
-#abline(lm(formula=rating~genre, data=prepan_movies))
 
 options(max.print = nrow(postpan_movies))
 my_linear2 <- lm(formula=rating~genre, data=postpan_movies)
@@ -580,7 +583,7 @@ for(i in 1:nrow(postpan_movies))
 #############################################
 ###### N-grams and tokenizing ###############
 #############################################
-
+#Unnesting tokens from pre-pandemic actors for bigram analysis
 prepan_actors <- prepan_movies %>%
   #filter(genre == "Comedy, Romance") %>%
   unnest_tokens(bigram2, actor, token = "ngrams", n=2)
@@ -593,7 +596,7 @@ prepan_actors %>%
 #############################################
 ###### N-grams and tokenizing ###############
 #############################################
-
+#Unnesting tokens from post-pandemic actors for bigram analysis
 postpan_actors <- postpan_movies %>%
   #filter(genre == "Comedy, Romance") %>%
   unnest_tokens(bigram3, actor, token = "ngrams", n=2)
@@ -606,7 +609,7 @@ postpan_actors %>%
 #############################################
 ###### N-grams and tokenizing ###############
 #############################################
-
+#Unnesting tokens from pre-pandemic directors for bigram analysis
 prepan_directors <- prepan_movies %>%
   #filter(genre == "Comedy, Romance") %>%
   unnest_tokens(bigram4, director, token = "ngrams", n=2)
@@ -619,7 +622,7 @@ prepan_directors %>%
 #############################################
 ###### N-grams and tokenizing ###############
 #############################################
-
+#Unnesting tokens from post-pandemic directors for bigram analysis
 postpan_directors <- postpan_movies %>%
   #filter(genre == "Comedy, Romance") %>%
   unnest_tokens(bigram5, director, token = "ngrams", n=2)
@@ -628,25 +631,3 @@ postpan_directors #We want to see the bigrams (words that appear together, "pair
 
 postpan_directors %>%
   count(bigram5, sort = TRUE) #this has many stop words, need to remove them 
-
-
-prepan_comedy <- prepan_movies %>%
-  filter(genre == "Comedy")
-prepan_romcom <- prepan_movies %>%
-  filter(genre == "Comedy, Romance")
-prepan_drama <- prepan_movies %>%
-  filter(genre == "Drama")
-postpan_comedy <- postpan_movies %>%
-  filter(genre == "Comedy")
-postpan_romcom <- postpan_movies %>%
-  filter(genre == "Comedy, Romance")
-postpan_drama <- postpan_movies %>%
-  filter(genre == "Drama")
-prepan_romance <- prepan_movies %>%
-  filter(genre=="Romance")
-postpan_romance <- postpan_movies %>%
-  filter(genre=="Romance")
-prepan_scifi <- prepan_movies %>%
-  filter(genre=="Sci-Fi")
-postpan_scifi <- postpan_movies %>%
-  filter(genre=="Sci-Fi")
